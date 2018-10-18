@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from copy import copy, deepcopy
 from datetime import datetime
+import json
 import logging
 import sys
 from time import mktime
@@ -9,7 +10,6 @@ import traceback
 import warnings
 from wsgiref.handlers import format_date_time
 
-import django
 from django.conf import settings
 from django.conf.urls import url
 from django.core.exceptions import (
@@ -18,11 +18,6 @@ from django.core.exceptions import (
 from django.core.signals import got_request_exception
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models.fields.related import ForeignKey
-from django.db import models
-try:
-    from django.contrib.gis.db.models.fields import GeometryField
-except (ImproperlyConfigured, ImportError):
-    GeometryField = None
 from django.db.models.constants import LOOKUP_SEP
 try:
     from django.db.models.fields.related import\
@@ -63,9 +58,26 @@ from tastypie.compat import get_module_name, atomic_decorator
 
 
 def sanitize(text):
+    """
+    Convert the text to a valid python representation if the text is a
+    valid JSON. Otherwise, replace the HTML apostrophe's with single quotes
+    and return.
+
+    Parameters
+    text (string): The text to be sanitized
+
+    Returns
+    string: the sanitized value
+    """
+
     # We put the single quotes back, due to their frequent usage in exception
     # messages.
-    return escape(text).replace('&#39;', "'").replace('&quot;', '"')
+    text = escape(text).replace('&#39;', "'").replace('&quot;', '"')
+
+    try:
+        return json.loads(text)
+    except ValueError:
+        return text
 
 
 class ResourceOptions(object):
